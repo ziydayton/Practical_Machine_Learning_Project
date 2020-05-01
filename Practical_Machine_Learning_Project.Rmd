@@ -14,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 This 
 
 ## Load Library
-```{r libs, warning=FALSE, echo=FALSE, include=FALSE}
+```{r libs, echo=FALSE, warning=FALSE, include=FALSE}
 library(caret)
 library(dplyr)
 library(knitr)
@@ -24,22 +24,37 @@ library(RCurl)
 ## Load Data
 
 The data was loaded from the sources:
+
 https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
 https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
 
 ```{r loadData, echo=FALSE}
-trainURL <- getURL('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv', ssl.verifyhost=FALSE, ssl.verifypeer=FALSE)
-validURL <- getURL('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv', ssl.verifyhost=FALSE, ssl.verifypeer=FALSE)
+f <- "pml-training.csv"
+if(file.exists(f)) {
+   initData <- read.csv(f, header = TRUE, stringsAsFactors = TRUE)
+} else {
+   trainURL <- getURL('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv', ssl.verifyhost=FALSE, ssl.verifypeer=FALSE)
+   initData <- read.csv(textConnection(trainURL), header = TRUE, 
+                     stringsAsFactors = TRUE)
+   rm(trainURL)
+}
 
-initData <- read.csv(textConnection(trainURL), header=T, stringsAsFactors = TRUE)
-valid <- read.csv(textConnection(validURL), header=T, stringsAsFactors = TRUE)
-
-rm(trainURL, validURL)
+f <- "pml-testing.csv"
+if(file.exists(f)) {
+   valid <- read.csv(f, header = TRUE, stringsAsFactors = TRUE)
+} else {
+   validURL <- getURL('https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv', ssl.verifyhost=FALSE, ssl.verifypeer=FALSE)
+   valid <- read.csv(textConnection(validURL), header=TRUE,
+                  stringsAsFactors = TRUE)
+   rm(validURL)
+}
+rm(f)
 ```
 
 ## Cross Validation
 The original dataset was randomly sliced into two parts using 70% for a training set and the remaining 30% for a test set.  Additionally, a set of 20 obseravtions was provided for a final validation set (aka for the Quiz!). The training set was used to fit the models and the test set was used for model selection based on the accuracy to account for the out-of-sample error. The summary table of the dimensions for the initial data, training set, testing set, and validation set is provided below:
-```{r partData, include=FALSE}
+```{r partData, echo=FALSE}
 set.seed(4949)
 tIndex <- createDataPartition(initData$classe, p = 0.7, list=FALSE)
 training <- initData[tIndex,]
@@ -96,20 +111,48 @@ sum(is.na(training), is.na(testing), is.na(valid)); rm(trainNA, testNA, validNA,
 ```
 
 ## Create models
-```{r modsFit}
+```{r modsFit, echo=FALSE}
 set.seed(16853)
-#predict diagnosis with all the other variables using a random forest ("rf"), boosted trees ("gbm") and linear discriminant analysis ("lda") model. 
-# mRF <- train(classe ~ ., data = training, method = "rf", prox = TRUE)
-# mGBM <- train(diagnosis ~ ., data = training, method = "gbm", verbose = FALSE)
-# mLDA <- train(diagnosis ~ ., data = training, method = "lda", verbose = FALSE)
-# 
-# pRF <- predict(modFitRF, newdata = testing)
-# pGBM <- predict(modFitGBM, newdata = testing)
-# pLDA <- predict(modFitLDA, newdata = testing)
-# 
-# aRF <- confusionMatrix(pRF, testing$diagnosis)$overall[1]
-# aGBM <- confusionMatrix(pGBM, testing$diagnosis)$overall[1]
-# aLDA <- confusionMatrix(pLDA, testing$diagnosis)$overall[1]
+#predict diagnosis with all the other variables using a random forest ("rf"), boosted trees ("gbm") and linear discriminant analysis ("lda") model.
+pt <- proc.time()
+#Random Forrest
+if(file.exists("mRF.RData")) {
+   load(file="mRF.RData", verbose=FALSE)
+} else {
+   trCtrlRF <- trainControl(method = "cv", number = 3, verboseIter = FALSE)
+   mRF <- train(classe ~ ., data = training, method = "rf", 
+                trControl = trCtrlRF)
+   save(mRF, file = "mRF.RData")
+}
+proc.time() - pt
+
+#Boosted Trees
+if(file.exists("mGBM.RData")) {
+   load(file="mGBM.RData", verbose=FALSE)
+} else {
+   mGBM <- train(classe ~ ., data = training, method = "gbm", verbose = FALSE)
+   save(mGBM, file = "mGBM.RData")
+}
+proc.time() - pt
+
+#Linear Discriminant Analysis
+if(file.exists("mLDA.RData")) {
+   load(file="mLDA.RData", verbose=FALSE)
+} else {
+   mLDA <- train(classe ~ ., data = training, method = "lda", verbose = FALSE)
+   save(mLDA, file = "mLDA.RData")
+}
+proc.time() - pt
+
+# Predict on the test set
+pRF <- predict(mRF, newdata = testing)
+pGBM <- predict(mGBM, newdata = testing)
+pLDA <- predict(mLDA, newdata = testing)
+
+#Find the accuracy on the test set for model selection
+aRF <- confusionMatrix(pRF, testing$classe)$overall[1]
+aGBM <- confusionMatrix(pGBM, testing$classe)$overall[1]
+aLDA <- confusionMatrix(pLDA, testing$classe)$overall[1]
 # 
 # #Stack the predictions together using random forests ("rf"). 
 # #What is the resulting accuracy on the test set? Is it better or worse than each of the individual predictions?
@@ -117,10 +160,18 @@ set.seed(16853)
 # mAll <- train(diagnosis ~ ., data = predDF, method = "rf", prox = TRUE)
 # pAll <- predict(mAll, newdata = predDF)
 # aAll <- confusionMatrix(pAll, testing$diagnosis)$overall[1]
-# 
-# #ANSWER
-# aRF
-# aGBM
-# aLDA
-# aAll
+
+print(paste0("The Random Forrest out-of-sample accuracy: ", round(aRF * 100, 3), "%"))
+print(paste0("The Boosted Trees out-of-sample accuracy: ", round (aGBM * 100, 3), "%"))
+print(paste0("The Linear Discriminant Analysis out-of-sample accuracy: ", round(aLDA * 100, 3), "%"))
 ```
+
+## Model Selection
+The resulting model accuracy for Random Forrest was the highest at 99.643% vice the Boosted Trees at 98.505% and Linear Discriminate Analysis ata 70.756%.  Random Forrest was select for the validation run.
+
+Using the Random Forrest model, the following prediction resulted:
+```{r validPred, echo=FALSE}
+predValidRF <- predict(mRF, newdata = valid)
+df <- data.frame(Case = c(1:20), Pred_Exer = predValidRF); df
+```
+This prediction resulted in 100% Accuracy on the validation data set (e.g. the final quiz). 

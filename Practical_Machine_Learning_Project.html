@@ -378,27 +378,34 @@ summary {
 </div>
 <div id="load-data" class="section level2">
 <h2>Load Data</h2>
-<p>The data was loaded from the sources: <a href="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv" class="uri">https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv</a> <a href="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv" class="uri">https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv</a></p>
+<p>The data was loaded from the sources:</p>
+<p><a href="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv" class="uri">https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv</a></p>
+<p><a href="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv" class="uri">https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv</a></p>
 </div>
 <div id="cross-validation" class="section level2">
 <h2>Cross Validation</h2>
 <p>The original dataset was randomly sliced into two parts using 70% for a training set and the remaining 30% for a test set. Additionally, a set of 20 obseravtions was provided for a final validation set (aka for the Quiz!). The training set was used to fit the models and the test set was used for model selection based on the accuracy to account for the out-of-sample error. The summary table of the dimensions for the initial data, training set, testing set, and validation set is provided below:</p>
+<pre><code>##                row column
+## Initial data 19622    160
+## Training     13737    160
+## Testing       5885    160
+## Validation      20    160</code></pre>
 </div>
 <div id="clean-data" class="section level2">
 <h2>Clean Data</h2>
-<p>The a seperate process of exploratory data analysis, two primary issues were noted with repesct to the data set. (1) The data contains varibles for identification such as the participant, index, and timestamp. (2) The data contains variables with many missing, <strong>NA</strong>, values.</p>
+<p>The a seperate process of exploratory data analysis, two primary issues were noted with repesct to the data set. (1) The data contains varibles for identification such as the participant, index, and timestamp. (2) The data contains variables with many missing, <em>NA</em>, values.</p>
 <div id="assumptions" class="section level3">
 <h3>Assumptions</h3>
 <ol style="list-style-type: decimal">
 <li>The indentification variables are not applcable to the prediction.</li>
-<li>Columns with <strong>greater the 90%</strong> of content missing are not useful for prediction.</li>
+<li>Columns with <em>greater the 90%</em> of content missing are not useful for prediction.</li>
 </ol>
 <p>The following table indicates the dimensionality of each data set after the identification variable are removed.</p>
 <pre><code>##              row column
 ## Training   13737    155
 ## Testing     5885    155
 ## Validation    20    155</code></pre>
-<p>Next, the variable (columns) lacking more than 90% of information <strong>(i.e. &gt;90% NA)</strong> were removed. The folling table displays the dimensons of the final treated data sets.</p>
+<p>Next, the variable (columns) lacking more than 90% of information <em>(i.e. &gt;90% NA)</em> were removed. The folling table displays the dimensons of the final treated data sets.</p>
 <pre><code>##              row column
 ## Training   13737     55
 ## Testing     5885     55
@@ -408,32 +415,42 @@ summary {
 </div>
 <div id="create-models" class="section level2">
 <h2>Create models</h2>
-<pre class="r"><code>set.seed(16853)
-#predict diagnosis with all the other variables using a random forest (&quot;rf&quot;), boosted trees (&quot;gbm&quot;) and linear discriminant analysis (&quot;lda&quot;) model. 
-# mRF &lt;- train(classe ~ ., data = training, method = &quot;rf&quot;, prox = TRUE)
-# mGBM &lt;- train(diagnosis ~ ., data = training, method = &quot;gbm&quot;, verbose = FALSE)
-# mLDA &lt;- train(diagnosis ~ ., data = training, method = &quot;lda&quot;, verbose = FALSE)
-# 
-# pRF &lt;- predict(modFitRF, newdata = testing)
-# pGBM &lt;- predict(modFitGBM, newdata = testing)
-# pLDA &lt;- predict(modFitLDA, newdata = testing)
-# 
-# aRF &lt;- confusionMatrix(pRF, testing$diagnosis)$overall[1]
-# aGBM &lt;- confusionMatrix(pGBM, testing$diagnosis)$overall[1]
-# aLDA &lt;- confusionMatrix(pLDA, testing$diagnosis)$overall[1]
-# 
-# #Stack the predictions together using random forests (&quot;rf&quot;). 
-# #What is the resulting accuracy on the test set? Is it better or worse than each of the individual predictions?
-# predDF &lt;- data.frame(pRF, pGBM, pLDA, diagnosis = testing$diagnosis)
-# mAll &lt;- train(diagnosis ~ ., data = predDF, method = &quot;rf&quot;, prox = TRUE)
-# pAll &lt;- predict(mAll, newdata = predDF)
-# aAll &lt;- confusionMatrix(pAll, testing$diagnosis)$overall[1]
-# 
-# #ANSWER
-# aRF
-# aGBM
-# aLDA
-# aAll</code></pre>
+<pre><code>##    user  system elapsed 
+##   0.133   0.009   0.144</code></pre>
+<pre><code>##    user  system elapsed 
+##   0.248   0.019   0.274</code></pre>
+<pre><code>##    user  system elapsed 
+##   0.306   0.023   0.337</code></pre>
+<pre><code>## [1] &quot;The Random Forrest out-of-sample accuracy: 99.643%&quot;</code></pre>
+<pre><code>## [1] &quot;The Boosted Trees out-of-sample accuracy: 98.505%&quot;</code></pre>
+<pre><code>## [1] &quot;The Linear Discriminant Analysis out-of-sample accuracy: 70.756%&quot;</code></pre>
+</div>
+<div id="model-selection" class="section level2">
+<h2>Model Selection</h2>
+<p>The resulting model accuracy for Random Forrest was the highest at 99.643% vice the Boosted Trees at 98.505% and Linear Discriminate Analysis ata 70.756%. Random Forrest was select for the validation run.</p>
+<p>Using the Random Forrest model, the following prediction resulted:</p>
+<pre><code>##    Case Pred_Exer
+## 1     1         B
+## 2     2         A
+## 3     3         B
+## 4     4         A
+## 5     5         A
+## 6     6         E
+## 7     7         D
+## 8     8         B
+## 9     9         A
+## 10   10         A
+## 11   11         B
+## 12   12         C
+## 13   13         B
+## 14   14         A
+## 15   15         E
+## 16   16         E
+## 17   17         A
+## 18   18         B
+## 19   19         B
+## 20   20         B</code></pre>
+<p>This prediction resulted in 100% Accuracy on the validation data set (e.g. the final quiz).</p>
 </div>
 
 
