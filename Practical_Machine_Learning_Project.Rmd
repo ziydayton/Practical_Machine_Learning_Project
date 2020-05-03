@@ -1,5 +1,5 @@
 ---
-title: "Pract Mach Learning"
+title: "Predicting Performance with Accelerometer Data"
 author: "J. Dayton"
 date: "5/1/2020"
 output: html_document
@@ -10,10 +10,14 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Executive Summary
+Using accelerometer data from 6 participants measured from the belt, forearm, arm, and dumbbell the patterns in their behavior.  The behavior of focus were barbell lifts performed correctly or incorrectly in 5 different ways.  The accelerator data was used to predict the performance behavior, correct or incorrect.  The approach used was to clean the data, test accuracy of three different machine learning approaches and perform a final data validation.  The Random Forest method was the final method chosen and the validation step resulted in 100% accuracy.
 
-This 
+This report focuses on the output steps of the analysis.  Please review the .Rmd file for the complete R code used in this analysis.
 
 ## Load Library
+
+The R package libraries used to perform this analysis include caret, dplyr, knitr, and RCurl.
+
 ```{r libs, echo=FALSE, warning=FALSE, include=FALSE}
 library(caret)
 library(dplyr)
@@ -22,6 +26,8 @@ library(RCurl)
 ```
 
 ## Load Data
+
+The data for this analysis was provided.  The training set provided was treated with a 70% random split to become a training and testing set.  The originally provided data set identified as 'pml-testing' was utilized as the validation data set.
 
 The data was loaded from the sources:
 
@@ -53,7 +59,7 @@ rm(f)
 ```
 
 ## Cross Validation
-The original dataset was randomly sliced into two parts using 70% for a training set and the remaining 30% for a test set.  Additionally, a set of 20 obseravtions was provided for a final validation set (aka for the Quiz!). The training set was used to fit the models and the test set was used for model selection based on the accuracy to account for the out-of-sample error. The summary table of the dimensions for the initial data, training set, testing set, and validation set is provided below:
+The original data set was randomly sliced into two parts using 70% for a training set and the remaining 30% for a test set.  Additionally, a set of 20 observations was provided for a final validation set (aka for the Quiz!). The training set was used to fit the models and the test set was used for model selection based on the accuracy to account for the out-of-sample error. The summary table of the dimensions for the initial data, training set, testing set, and validation set is provided below:
 ```{r partData, echo=FALSE}
 set.seed(4949)
 tIndex <- createDataPartition(initData$classe, p = 0.7, list=FALSE)
@@ -68,11 +74,11 @@ df; rm(tIndex, df)
 
 ## Clean Data
 
-The a seperate process of exploratory data analysis, two primary issues were noted with repesct to the data set.  (1) The data contains varibles for identification such as the participant, index, and timestamp.  (2) The data contains variables with many missing, _NA_, values.
+The a separate process of exploratory data analysis, two primary issues were noted with respect to the data set.  (1) The data contains variables for identification such as the participant, index, and time stamp.  (2) The data contains variables with many missing, _NA_, values.
 
 ### Assumptions
 
-(1) The indentification variables are not applcable to the prediction.
+(1) The identification variables are not applicable to the prediction.
 (2) Columns with _greater the 90%_ of content missing are not useful for prediction.
 
 The following table indicates the dimensionality of each data set after the identification variable are removed.
@@ -86,7 +92,7 @@ colnames(df) <- c("row", "column")
 df; rm(df)
 ```
 
-Next, the variable (columns) lacking more than 90% of information _(i.e. >90% NA)_ were removed.  The folling table displays the dimensons of the final treated data sets.
+Next, the variable (columns) lacking more than 90% of information _(i.e. >90% NA)_ were removed.  The following table displays the dimensions of the final treated data sets.
 ```{r treatComp, echo=FALSE}
 #Find the columns that have majority NA values
 trainNA <- apply(training, 2, function(x) mean(is.na(x))) > 0.90
@@ -111,6 +117,8 @@ sum(is.na(training), is.na(testing), is.na(valid)); rm(trainNA, testNA, validNA,
 ```
 
 ## Create models
+
+The machine learning models used on the training data were Random Forest, Boosted Trees, and Linear Discriminate Analysis.  
 ```{r modsFit, echo=FALSE}
 set.seed(16853)
 #predict diagnosis with all the other variables using a random forest ("rf"), boosted trees ("gbm") and linear discriminant analysis ("lda") model.
@@ -124,7 +132,7 @@ if(file.exists("mRF.RData")) {
                 trControl = trCtrlRF)
    save(mRF, file = "mRF.RData")
 }
-proc.time() - pt
+timeRF <- proc.time() - pt
 
 #Boosted Trees
 if(file.exists("mGBM.RData")) {
@@ -133,7 +141,7 @@ if(file.exists("mGBM.RData")) {
    mGBM <- train(classe ~ ., data = training, method = "gbm", verbose = FALSE)
    save(mGBM, file = "mGBM.RData")
 }
-proc.time() - pt
+timeGBM <- proc.time() - pt
 
 #Linear Discriminant Analysis
 if(file.exists("mLDA.RData")) {
@@ -142,33 +150,80 @@ if(file.exists("mLDA.RData")) {
    mLDA <- train(classe ~ ., data = training, method = "lda", verbose = FALSE)
    save(mLDA, file = "mLDA.RData")
 }
-proc.time() - pt
+timeLDA <- proc.time() - pt
+```
 
+### In-Sample
+The three models were created and first tested for in-sample accuracy.
+
+```{r inSample, echo = FALSE, warning=FALSE, out.width="50%"}
+# Predict on the test set
+pRF <- predict(mRF, newdata = training)
+pGBM <- predict(mGBM, newdata = training)
+pLDA <- predict(mLDA, newdata = training)
+
+#Find the accuracy on the test set for model selection
+aRF <- confusionMatrix(pRF, training$classe)
+aGBM <- confusionMatrix(pGBM, training$classe)
+aLDA <- confusionMatrix(pLDA, training$classe)
+
+
+plot(aRF$table, col = aRF$byClass, 
+     main = paste("Random Forest Model ~ In-Sample Accuracy: ",
+                  paste0(round(aRF$overall[1] * 100, 3), "%")),
+     color = "green")
+print(paste0("The Random Forrest in-sample accuracy: ", round(aRF$overall[1] * 100, 3), "%"))
+
+plot(aGBM$table, col = aGBM$byClass, 
+     main = paste("Boosted Trees Model ~ In-Sample Accuracy: ",
+                  paste0(round(aGBM$overall[1] * 100, 3), "%")),
+     color = "yellow")
+print(paste0("The Boosted Trees in-sample accuracy: ", round (aGBM$overall[1] * 100, 3), "%"))
+
+plot(aLDA$table, col = aLDA$byClass, 
+     main = paste("Linear Discrim. Analysis Model ~ In-Sample Accuracy: ",
+                  paste0(round(aLDA$overall[1] * 100, 3), "%")),
+     color = "red")
+print(paste0("The Linear Discriminant Analysis in-sample accuracy: ", round(aLDA$overall[1] * 100, 3), "%"))
+```
+
+The first glimpse at the accuracy of each model resulted in Random Forest leading the way with 100% in-sample accuracy.  Random Forest was followed by Boosted Trees with 99.4% accuracy, and Linear Discriminate Analysis with 71.7% accuracy.  As this is in-sample accuracy, no final model selection was made due to concern for potential model over-fitting, but the out-of-sample accuracy was used as a deciding metric of performance of each of these models.
+
+### Out-of-Sample
+```{r outOfSample, echo = FALSE, warning=FALSE, out.width="50%"}
 # Predict on the test set
 pRF <- predict(mRF, newdata = testing)
 pGBM <- predict(mGBM, newdata = testing)
 pLDA <- predict(mLDA, newdata = testing)
 
 #Find the accuracy on the test set for model selection
-aRF <- confusionMatrix(pRF, testing$classe)$overall[1]
-aGBM <- confusionMatrix(pGBM, testing$classe)$overall[1]
-aLDA <- confusionMatrix(pLDA, testing$classe)$overall[1]
-# 
-# #Stack the predictions together using random forests ("rf"). 
-# #What is the resulting accuracy on the test set? Is it better or worse than each of the individual predictions?
-# predDF <- data.frame(pRF, pGBM, pLDA, diagnosis = testing$diagnosis)
-# mAll <- train(diagnosis ~ ., data = predDF, method = "rf", prox = TRUE)
-# pAll <- predict(mAll, newdata = predDF)
-# aAll <- confusionMatrix(pAll, testing$diagnosis)$overall[1]
+aRF <- confusionMatrix(pRF, testing$classe)
+aGBM <- confusionMatrix(pGBM, testing$classe)
+aLDA <- confusionMatrix(pLDA, testing$classe)
 
-print(paste0("The Random Forrest out-of-sample accuracy: ", round(aRF * 100, 3), "%"))
-print(paste0("The Boosted Trees out-of-sample accuracy: ", round (aGBM * 100, 3), "%"))
-print(paste0("The Linear Discriminant Analysis out-of-sample accuracy: ", round(aLDA * 100, 3), "%"))
+plot(aRF$table, col = aRF$byClass, 
+     main = paste("Random Forest Model ~ Out-of-Sample Accuracy: ",
+                  paste0(round(aRF$overall[1] * 100, 3), "%")),
+     color = "green")
+print(paste0("The Random Forrest out-of-sample accuracy: ", round(aRF$overall[1] * 100, 3), "%"))
+
+plot(aGBM$table, col = aGBM$byClass, 
+     main = paste("Boosted Trees Model ~ Out-of-Sample Accuracy: ",
+                  paste0(round(aGBM$overall[1] * 100, 3), "%")),
+     color = "yellow")
+print(paste0("The Boosted Trees out-of-sample accuracy: ", round (aGBM$overall[1] * 100, 3), "%"))
+
+plot(aLDA$table, col = aLDA$byClass, 
+     main = paste("Linear Discrim. Analysis Model ~ Out-of-Sample Accuracy: ",
+                  paste0(round(aLDA$overall[1] * 100, 3), "%")),
+     color = "red")
+print(paste0("The Linear Discriminant Analysis out-of-sample accuracy: ", round(aLDA$overall[1] * 100, 3), "%"))
 ```
 
 ## Model Selection
-The resulting model accuracy for Random Forrest was the highest at 99.643% vice the Boosted Trees at 98.505% and Linear Discriminate Analysis ata 70.756%.  Random Forrest was select for the validation run.
+The resulting model accuracy for Random Forrest was the highest at 99.643% vice the Boosted Trees at 98.505% and Linear Discriminate Analysis at 70.756%.  Random Forrest was select for the validation run.
 
+### Validation Results
 Using the Random Forrest model, the following prediction resulted:
 ```{r validPred, echo=FALSE}
 predValidRF <- predict(mRF, newdata = valid)
