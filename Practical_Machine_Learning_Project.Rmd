@@ -14,6 +14,8 @@ Using accelerometer data from 6 participants measured from the belt, forearm, ar
 
 This report focuses on the output steps of the analysis.  Please review the .Rmd file for the complete R code used in this analysis.
 
+The information and data for this analysis was derived from: http://web.archive.org/web/20161224072740/http:/groupware.les.inf.puc-rio.br/har.
+
 ## Load Library
 
 The R package libraries used to perform this analysis include caret, dplyr, knitr, and RCurl.
